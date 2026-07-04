@@ -1,62 +1,6 @@
 import cv2
 import albumentations as A
-from pathlib import Path
-import sys
-import argparse
-import os
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(
-        description="Dataset augmentation for talks segmentation",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        "--images_dir",
-        type=Path,
-        required=True,
-        help="image dir path"
-    )
-
-    parser.add_argument(
-        "--masks_dir",
-        type=Path,
-        required=True,
-        help="mask dir path"
-    )
-
-    parser.add_argument(
-        "--output_dir",
-        type=Path,
-        required=True,
-        help="save dir Path"
-    )
-
-    parser.add_argument(
-        "--num_augmentations",
-        type=int,
-        default=20,
-        help="Number of augmented variations per image"
-    )
-
-    parser.add_argument(
-        "--output_size",
-        type=str,
-        default="512,512",
-        help="Output image size in 'width,height' format"
-    )
-
-    return parser.parse_args()
-
-
-def sanitize_filename(path):
-    parent = path.parent
-    new_name = path.name.replace('х', 'x').replace('Х', 'X')
-    if new_name != path.name:
-        new_path = parent / new_name
-        os.rename(path, new_path)
-        return new_path
-    return path
+import numpy as np
 
 
 def get_augmentation_pipeline():
@@ -128,70 +72,20 @@ def get_augmentation_pipeline():
     ], mask_interpolation=cv2.INTER_NEAREST)
 
 
-def augment_dataset(images_dir, masks_dir, output_dir,
-                    num_augmentations_per_image = 20,
-                    output_size = (512, 512)):
-
-    output_images_dir = output_dir / "images"
-    output_masks_dir = output_dir / "masks"
-
-    output_images_dir.mkdir(parents=True, exist_ok=True)
-    output_masks_dir.mkdir(parents=True, exist_ok=True)
-
-    image_paths = sorted(images_dir.glob("*.*"))
-    mask_paths = sorted(masks_dir.glob("*.*"))
+def augment_generate(image, mask, num_augmentations_per_image=10, output_size=(512, 512)):
+    image = cv2.resize(image, output_size)
+    mask = cv2.resize(mask, output_size, interpolation=cv2.INTER_NEAREST)
 
     transform = get_augmentation_pipeline()
+    images = [image]
+    masks = [mask]
 
-    counter = 0
+    for _ in range(num_augmentations_per_image):
+        augmented = transform(image=image, mask=mask)
+        images.append(augmented['image'])
+        masks.append(augmented['mask'])
 
-    for img_path, mask_path in zip(image_paths, mask_paths):
-        image = cv2.imread(str(img_path))
-        mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+    images = np.array(images)
+    masks = np.array(masks)
 
-        image = cv2.resize(image, output_size)
-        mask = cv2.resize(mask, output_size, interpolation=cv2.INTER_NEAREST)
-
-        counter = save_pair(image, mask, output_images_dir, output_masks_dir, counter)
-
-        for _ in range(num_augmentations_per_image):
-            augmented = transform(image=image, mask=mask)
-            aug_image = augmented['image']
-            aug_mask = augmented['mask']
-            counter = save_pair(aug_image, aug_mask, output_images_dir, output_masks_dir, counter)
-
-    return counter
-
-
-def save_pair(image, mask, images_dir, masks_dir, counter):
-    filename = f"aug_{counter:06d}"
-
-    cv2.imwrite(str(images_dir / f"{filename}.png"), image)
-    cv2.imwrite(str(masks_dir / f"{filename}.png"), mask)
-
-    return counter + 1
-
-
-def main():
-    args = parse_arguments()
-
-    width, height = map(int, args.output_size.split(','))
-    output_size = (width, height)
-
-    for file in args.images_dir.glob("*.*"):
-        sanitize_filename(file)
-    for file in args.masks_dir.glob("*.*"):
-        sanitize_filename(file)
-
-    total = augment_dataset(
-        images_dir = args.images_dir,
-        masks_dir = args.masks_dir,
-        output_dir = args.output_dir,
-        num_augmentations_per_image = args.num_augmentations,
-        output_size=output_size
-    )
-
-    print(f"Total pairs: {total}")
-
-if __name__ == '__main__':
-    sys.exit(main() or 0)
+    return images, masks
