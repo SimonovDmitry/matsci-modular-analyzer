@@ -1,0 +1,8 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+python-multipart==0.0.6
+numpy==1.26.2
+opencv-python-headless==4.8.1.78
+tifffile==2023.9.26
+streamlit==1.32.0
+requests==2.31.0
