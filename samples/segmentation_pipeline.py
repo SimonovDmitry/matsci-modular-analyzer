@@ -3,49 +3,75 @@ import os
 import torch
 import numpy as np
 import logging
+import argparse
 import subprocess
 import platform
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from src.segmentation import TalcPredictor
 from src.preprocessing import ImageLoader, PreprocessingPipeline
 
-
-def setup_logger():
-    logging.basicConfig(
+logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
         datefmt='%H:%M:%S'
     )
-    return logging.getLogger("InferencePipeline")
+logger = logging.getLogger("InferencePipeline")
 
 
-def run_inference(image_path, weights_path=None):
-    logger = setup_logger()
+def get_args():
+    parser = argparse.ArgumentParser(description="Ore Segmentation Inference Script")
+    parser.add_argument(
+        "--image",
+        type=str,
+        default="PycharmProjects/matsci-modular-analyzer/data/photos_of_ores_pt1/talc-bearing_ores/2550374-2 10х.JPG",
+        help="Path to the input image"
+    )
+    parser.add_argument(
+        "--weights",
+        type=str,
+        default="PycharmProjects/matsci-modular-analyzer/src/segmentation/models/best_talc_model.pth",
+        help="Path to the model weights (.pth)"
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="results",
+        help="Directory to save output images"
+    )
+    return parser.parse_args()
 
-    if not os.path.exists(image_path):
-        logger.error(f"Image not found at: {image_path}")
+
+def run_inference():
+    args = get_args()
+
+    if not os.path.exists(args.image):
+        logger.error(f"Image not found: {args.image}")
         return
 
+    os.makedirs(args.output_dir, exist_ok=True)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info(f"System ready. Running on: {device.upper()}")
 
     loader = ImageLoader()
-    original_img_rgb = loader.load(image_path)
+    original_img_rgb = loader.load(args.image)
     logger.info(f"Original image loaded. Resolution: {original_img_rgb.shape}")
 
     predictor = TalcPredictor(
-        model_weights_path=weights_path if (weights_path and os.path.exists(weights_path)) else None,
-        device=device
+        model_weights_path=args.weights if os.path.exists(args.weights) else None,
+        device=device,
+        logger=logger
     )
 
-    predictor.pipeline = PreprocessingPipeline(
-        tile_size=512,
-        overlap=64
-    )
+    logger.info("Starting batch tile analysis...")
+    mask, enhanced_image_rgb = predictor.predict(args.image)
 
-    logger.info("Starting batch tile analysis")
-
-    mask, enhanced_image_rgb = predictor.predict(image_path)
-    base_name = os.path.splitext(os.path.basename(image_path))[0]
+    base_name = os.path.splitext(os.path.basename(args.image))[0]
 
     if mask.shape[:2] != original_img_rgb.shape[:2]:
         logger.info("Resizing mask to match original raw resolution...")
@@ -63,13 +89,12 @@ def run_inference(image_path, weights_path=None):
         blue_fill = np.full_like(original_pixels, blue_color)
         final_visual[talc_indices] = cv2.addWeighted(original_pixels, 0.5, blue_fill, 0.5, 0).reshape(-1, 3)
 
-    step1_path = f"Original_{base_name}.jpg"
+    step1_path = os.path.join(args.output_dir, f"Original_{base_name}.jpg")
+    step2_path = os.path.join(args.output_dir, f"Enhanced_{base_name}.jpg")
+    step3_path = os.path.join(args.output_dir, f"Final_Result_{base_name}.jpg")
+
     cv2.imwrite(step1_path, cv2.cvtColor(original_img_rgb, cv2.COLOR_RGB2BGR))
-
-    step2_path = f"Enhanced_{base_name}.jpg"
     cv2.imwrite(step2_path, cv2.cvtColor(enhanced_image_rgb, cv2.COLOR_RGB2BGR))
-
-    step3_path = f"Final_Result_{base_name}.jpg"
     cv2.imwrite(step3_path, cv2.cvtColor(final_visual, cv2.COLOR_RGB2BGR))
 
     talc_area_pixels = np.sum(mask_full > 0.5)
@@ -77,14 +102,11 @@ def run_inference(image_path, weights_path=None):
 
     logger.info("ANALYSIS COMPLETE")
     logger.info(f"Detected Talc concentration: {talc_percent:.2f}%")
-    logger.info(f"Results saved to project root.")
+    logger.info(f"Outputs saved to: {args.output_dir}")
 
     if platform.system() == "Darwin":
-        subprocess.run(["open", step1_path, step2_path, step3_path])
+        subprocess.run(["open", step3_path])
 
 
 if __name__ == "__main__":
-    TEST_IMAGE = "/Users/PycharmProjects/matsci-modular-analyzer/data/photos_of_ores_pt1/talc-bearing_ores/2550374-2 10х.JPG"
-    MODEL_WEIGHTS = "/Users/PycharmProjects/matsci-modular-analyzer/src/segmentation/models/best_talc_model.pth"
-
-    run_inference(TEST_IMAGE, MODEL_WEIGHTS)
+    run_inference()
