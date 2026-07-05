@@ -85,7 +85,7 @@ def train_pipeline(data_root, warmup=15, fine_tune=35, batch_size=4):
         logger.info(f"Warmup {e} | Val F1: {vm['f1']}")
         if vm['iou'] > best_iou:
             best_iou = vm['iou']
-            model.save_weights("models/best_talc_model.pth")
+            model.save_weights("weights/best_talc_model.pth")
             logger.info("New best model saved")
 
 

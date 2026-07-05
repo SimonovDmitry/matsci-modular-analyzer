@@ -25,23 +25,21 @@ if st.button("Start Analysis", type="primary") and uploaded_file:
                 st.divider()
                 st.subheader("Results")
 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 col1.metric("Ore Class", result["ore_class"])
                 col2.metric("Talc Percent", f"{result['talc_percent']}%")
+                col3.metric("Classifier Confidence", f"{result['clf_confidence']}%")
 
-                # Путь к картинке
                 img_path = os.path.join(WORKSPACE_DIR, result["result_image_path"])
                 if os.path.exists(img_path):
                     st.image(img_path, caption="Segmentation Result (Blue = Talc)", use_column_width=True)
 
-                # Генерация отчетов
                 csv_path = os.path.join(WORKSPACE_DIR, f"report_{task_id}.csv")
                 pdf_path = os.path.join(WORKSPACE_DIR, f"report_{task_id}.pdf")
 
                 generate_csv_report(result, csv_path)
                 generate_pdf_report(result, img_path, pdf_path)
 
-                # Кнопки скачивания
                 dl1, dl2 = st.columns(2)
                 with dl1:
                     with open(csv_path, "rb") as f:

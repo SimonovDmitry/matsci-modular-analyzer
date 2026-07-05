@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 import uuid
 import os
 import logging
-from ml_core import predict_talc_real, process_mask_and_overlay, logger
+from ml_core import run_full_analysis, process_mask_and_overlay, logger
 
 app = FastAPI(title="Ore Analysis API")
 
@@ -21,9 +21,9 @@ async def analyze_image(file: UploadFile = File(...)):
             buffer.write(content)
 
         logger.info(f"Starting analysis for task {task_id}")
-        mask, enhanced_img = predict_talc_real(temp_path)
+        analysis_results = run_full_analysis(temp_path)
+        result_data = process_mask_and_overlay(temp_path, analysis_results)
 
-        result_data = process_mask_and_overlay(temp_path, mask, enhanced_img)
         result_data["result_image_path"] = os.path.basename(result_data["result_image_path"])
         result_data["task_id"] = task_id
 

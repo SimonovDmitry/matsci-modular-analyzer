@@ -35,7 +35,7 @@ def get_args():
     parser.add_argument(
         "--weights",
         type=str,
-        default="PycharmProjects/matsci-modular-analyzer/src/segmentation/models/best_talc_model.pth",
+        default="PycharmProjects/matsci-modular-analyzer/src/segmentation/weights/best_talc_model.pth",
         help="Path to the model weights (.pth)"
     )
     parser.add_argument(

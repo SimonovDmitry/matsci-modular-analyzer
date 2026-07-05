@@ -1,8 +1,25 @@
+# --- Бэкенд и API ---
 fastapi>=0.115.0
 uvicorn>=0.30.0
 python-multipart==0.0.6
-numpy==1.26.2
-opencv-python-headless==4.8.1.78
-tifffile==2023.9.26
-streamlit==1.32.0
 requests==2.31.0
+
+# --- Веб-интерфейс ---
+# Обновлено до версии >= 1.35.0 для встроенной поддержки NumPy 2.x
+streamlit>=1.35.0
+fpdf2
+
+# --- Работа с изображениями и массивами ---
+tifffile==2023.9.26
+numpy>=2.0.0
+opencv-python-headless>=4.10.0
+scipy>=1.13.0
+
+# --- Машинное обучение и Данные ---
+scikit-learn
+albumentations
+
+# --- Нейросети (PyTorch Ecosystem) ---
+torch
+torchvision
+segmentation-models-pytorch
