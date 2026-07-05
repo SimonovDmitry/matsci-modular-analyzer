@@ -72,11 +72,8 @@ cd matsci-modular-analyzer
 ### 2. Развертывание виртуального окружения и установка зависимостей# Создание виртуального окружения
 python3 -m venv venv
 
-# Активация для macOS/Linux:
-source venv/bin/activate
-
-# Или активация для Windows (PowerShell):
-# .\venv\Scripts\Activate.ps1
+Активация для macOS/Linux: source venv/bin/activate
+Или активация для Windows (PowerShell): .\venv\Scripts\Activate.ps1
 
 # Установка всех необходимых библиотек
 pip install --upgrade pip
